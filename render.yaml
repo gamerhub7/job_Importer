@@ -1,0 +1,57 @@
+# render.yaml - Render infrastructure as code for Job Importer
+# Place this file in the root of your git repo, commit & push to main/master.
+#
+# NOTE: Secrets referenced here (MONGO_URI, REDIS_URL, FEEDS, ...) must be
+# created in the Render dashboard before the services are created.
+#
+services:
+  # Web service: Express server + scheduler
+  - type: web
+    name: job-importer-server
+    env: node
+    # optional: repo url (Render can auto-detect when you connect the repo)
+    # repo: https://github.com/<USERNAME>/<REPO>
+    branch: main
+    plan: free
+    region: oregon
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4000"
+      - key: MONGO_URI
+        fromSecret: MONGO_URI
+      - key: REDIS_URL
+        fromSecret: REDIS_URL
+      - key: FEEDS
+        fromSecret: FEEDS
+      - key: WORKER_CONCURRENCY
+        fromSecret: WORKER_CONCURRENCY
+      - key: BATCH_SIZE
+        fromSecret: BATCH_SIZE
+
+  # Background worker: BullMQ consumer
+  - type: worker
+    name: job-importer-worker
+    env: node
+    # repo: https://github.com/<USERNAME>/<REPO>
+    branch: main
+    plan: free
+    region: oregon
+    startCommand: cd server && npm run worker
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        fromSecret: MONGO_URI
+      - key: REDIS_URL
+        fromSecret: REDIS_URL
+      - key: FEEDS
+        fromSecret: FEEDS
+      - key: WORKER_CONCURRENCY
+        fromSecret: WORKER_CONCURRENCY
+      - key: BATCH_SIZE
+        fromSecret: BATCH_SIZE
